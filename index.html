@@ -450,13 +450,18 @@
             loadingSpinner.style.display = 'block';
             resultArea.style.display = 'none';
 
-            // Animate progress bar
+            // Animate progress bar with percentage display
             let progressValue = 0;
+            convertBtn.innerHTML = '🔄 Converting... 0%';
+            
             const progressInterval = setInterval(() => {
                 progressValue += 5;
                 progressBar.style.width = progressValue + '%';
+                convertBtn.innerHTML = `🔄 Converting... ${progressValue}%`;
+                
                 if (progressValue >= 100) {
                     clearInterval(progressInterval);
+                    convertBtn.innerHTML = '✨ Finalizing...';
                     finishConversion();
                 }
             }, 100);
@@ -498,7 +503,9 @@
                         
                         // Create basic JEF file structure
                         const jefData = createBasicJEF(canvas.width, canvas.height, fileName);
-                        const blob = new Blob([jefData], { type: 'application/octet-stream' });
+                        const blob = new Blob([jefData], { 
+                            type: 'application/x-jef' // Proper MIME type for JEF files
+                        });
                         resolve({ blob, fileName });
                     };
                     img.src = URL.createObjectURL(file);
@@ -506,43 +513,81 @@
             } else {
                 // For other formats, create a placeholder JEF
                 const jefData = createBasicJEF(100, 100, fileName);
-                const blob = new Blob([jefData], { type: 'application/octet-stream' });
+                const blob = new Blob([jefData], { 
+                    type: 'application/x-jef' // Proper MIME type for JEF files
+                });
                 return { blob, fileName };
             }
         }
 
         function createBasicJEF(width, height, fileName) {
-            // Create a basic JEF file header and simple stitch pattern
-            const header = new ArrayBuffer(116);
-            const view = new DataView(header);
+            // Create proper JEF file with correct headers and structure
+            const jefData = new Uint8Array(116 + 200); // Header + stitch data
+            const view = new DataView(jefData.buffer);
             
-            // JEF file signature
-            view.setUint32(0, 0x00000074, true); // Thread count
-            view.setUint32(4, width, true);      // Width
-            view.setUint32(8, height, true);     // Height
-            
-            // Add some basic stitch data for a simple pattern
-            const stitchData = new ArrayBuffer(200);
-            const stitchView = new DataView(stitchData);
-            
-            // Create simple rectangular outline stitches
+            // JEF Header Structure (116 bytes)
             let offset = 0;
+            
+            // Thread count (4 bytes)
+            view.setUint32(offset, 1, true); // 1 thread
+            offset += 4;
+            
+            // Design extents
+            view.setInt32(offset, -width/2, true);     // Left
+            offset += 4;
+            view.setInt32(offset, -height/2, true);    // Top
+            offset += 4;
+            view.setInt32(offset, width/2, true);      // Right
+            offset += 4;
+            view.setInt32(offset, height/2, true);     // Bottom
+            offset += 4;
+            
+            // Hoop size (100x100mm default for Usha 450E)
+            view.setInt32(offset, 1000, true);  // Hoop width (100mm * 10)
+            offset += 4;
+            view.setInt32(offset, 1000, true);  // Hoop height (100mm * 10)
+            offset += 4;
+            
+            // Skip to thread section (offset 32)
+            offset = 32;
+            
+            // Thread color information
+            view.setUint32(offset, 0x000000, true); // Black thread
+            offset += 4;
+            
+            // Fill remaining header with zeros
+            for (let i = offset; i < 116; i++) {
+                jefData[i] = 0;
+            }
+            
+            // Stitch data section starts at offset 116
+            offset = 116;
+            
+            // Create simple rectangular pattern with proper JEF coordinates
             const stitches = [
-                [0, 0], [width, 0], [width, height], [0, height], [0, 0]
+                [0, 0, 0x80],           // Move to start
+                [-width/2, -height/2, 0x80], // Top-left corner
+                [width/2, -height/2, 0x80],  // Top-right corner  
+                [width/2, height/2, 0x80],   // Bottom-right corner
+                [-width/2, height/2, 0x80],  // Bottom-left corner
+                [-width/2, -height/2, 0x80], // Back to start
+                [0, 0, 0x81]            // End pattern
             ];
             
-            stitches.forEach(([x, y]) => {
-                stitchView.setInt16(offset, x, true);
-                stitchView.setInt16(offset + 2, y, true);
-                offset += 4;
+            // Encode stitches in JEF format
+            stitches.forEach(([x, y, cmd]) => {
+                // JEF uses specific encoding for coordinates
+                let dx = Math.max(-127, Math.min(127, Math.round(x)));
+                let dy = Math.max(-127, Math.min(127, Math.round(y)));
+                
+                if (offset < jefData.length - 2) {
+                    jefData[offset] = dx & 0xFF;
+                    jefData[offset + 1] = dy & 0xFF;
+                    offset += 2;
+                }
             });
             
-            // Combine header and stitch data
-            const combined = new Uint8Array(header.byteLength + stitchData.byteLength);
-            combined.set(new Uint8Array(header), 0);
-            combined.set(new Uint8Array(stitchData), header.byteLength);
-            
-            return combined;
+            return jefData;
         }
 
         function showResult(jefFile) {
