@@ -867,7 +867,7 @@
                 const height = Math.round(width * (this.canvas.height / this.canvas.width));
 
                 const stitches = [];
-                const step = Math.max(1, Math.floor(8 / density));
+                const step = Math.max(2, Math.floor(10 / density)); // Ensure minimum step size
 
                 if (!this.imageData) return stitches;
 
@@ -876,13 +876,19 @@
                 const canvasHeight = this.canvas.height;
 
                 let currentColor = -1;
+                let hasStitches = false;
 
-                // Enhanced stitch generation with better patterns
+                // Add starting position
+                stitches.push({ type: 'stitch', x: 0, y: 0 });
+
+                // Generate fill pattern stitches
                 if (stitchType === 'fill' || stitchType === 'auto') {
                     for (let y = 0; y < canvasHeight; y += step) {
                         const direction = (Math.floor(y / step) % 2) === 0 ? 1 : -1;
                         const startX = direction > 0 ? 0 : canvasWidth - 1;
                         const endX = direction > 0 ? canvasWidth : -1;
+                        
+                        let rowHasStitches = false;
 
                         for (let x = startX; x !== endX; x += direction * step) {
                             const index = (y * canvasWidth + x) * 4;
@@ -898,20 +904,54 @@
                             if (r > 240 && g > 240 && b > 240) continue;
 
                             const colorIndex = this.findColorIndex({ r, g, b });
-
+                            
+                            // Convert to embroidery coordinates (0.1mm units)
                             const embX = Math.round(((x / canvasWidth) - 0.5) * width * 10);
                             const embY = Math.round(((y / canvasHeight) - 0.5) * height * 10);
 
+                            // Add color change if needed
                             if (colorIndex !== currentColor) {
-                                if (currentColor !== -1) {
+                                if (hasStitches) {
                                     stitches.push({ type: 'color_change', color: colorIndex });
                                 }
                                 currentColor = colorIndex;
                             }
 
+                            // Add jump if starting new row and we have previous stitches
+                            if (!rowHasStitches && hasStitches) {
+                                const lastStitch = stitches[stitches.length - 1];
+                                if (lastStitch.type === 'stitch') {
+                                    const distance = Math.sqrt(
+                                        Math.pow(embX - lastStitch.x, 2) + 
+                                        Math.pow(embY - lastStitch.y, 2)
+                                    );
+                                    if (distance > 50) { // Jump if distance > 5mm
+                                        stitches.push({ type: 'jump', x: embX, y: embY });
+                                    }
+                                }
+                            }
+
                             stitches.push({ type: 'stitch', x: embX, y: embY });
+                            hasStitches = true;
+                            rowHasStitches = true;
                         }
                     }
+                }
+
+                // Ensure we have at least some stitches
+                if (!hasStitches) {
+                    // Create a simple outline if no fill stitches were generated
+                    const outlinePoints = [
+                        { x: -width * 5, y: -height * 5 },
+                        { x: width * 5, y: -height * 5 },
+                        { x: width * 5, y: height * 5 },
+                        { x: -width * 5, y: height * 5 },
+                        { x: -width * 5, y: -height * 5 }
+                    ];
+                    
+                    outlinePoints.forEach(point => {
+                        stitches.push({ type: 'stitch', x: point.x, y: point.y });
+                    });
                 }
 
                 stitches.push({ type: 'end' });
@@ -919,72 +959,134 @@
             }
 
             buildProfessionalJEF(stitches) {
-                // Enhanced JEF file format with proper headers
-                const header = new ArrayBuffer(512);
-                const headerView = new DataView(header);
-
-                // JEF magic number and version
-                headerView.setUint32(0, 0x00100000, false);
-                headerView.setUint32(4, 0x00000014, true); // Header size
-
-                // Design bounds (in 0.1mm units)
-                headerView.setInt32(8, Math.round(this.bounds.minX * 10), true);
-                headerView.setInt32(12, Math.round(this.bounds.minY * 10), true);
-                headerView.setInt32(16, Math.round(this.bounds.maxX * 10), true);
-                headerView.setInt32(20, Math.round(this.bounds.maxY * 10), true);
-
-                // Stitch and color counts
+                // Proper JEF file format implementation
                 const stitchCount = stitches.filter(s => s.type === 'stitch').length;
-                headerView.setInt32(24, stitchCount, true);
-                headerView.setInt32(28, this.processedColors.length, true);
-
-                // Color palette (starting at offset 128)
-                this.processedColors.forEach((color, index) => {
-                    const rgb = this.hexToRgb(color.hex);
-                    const offset = 128 + (index * 4);
-                    headerView.setUint8(offset, rgb.r);
-                    headerView.setUint8(offset + 1, rgb.g);
-                    headerView.setUint8(offset + 2, rgb.b);
-                    headerView.setUint8(offset + 3, 0);
+                const colorCount = this.processedColors.length;
+                
+                // Calculate actual design bounds from stitches
+                let minX = 0, minY = 0, maxX = 0, maxY = 0;
+                stitches.forEach(stitch => {
+                    if (stitch.type === 'stitch') {
+                        minX = Math.min(minX, stitch.x);
+                        minY = Math.min(minY, stitch.y);
+                        maxX = Math.max(maxX, stitch.x);
+                        maxY = Math.max(maxY, stitch.y);
+                    }
                 });
 
-                // Build stitch data
-                const stitchData = this.encodeStitchData(stitches);
+                // JEF header structure (116 bytes)
+                const header = new ArrayBuffer(116);
+                const headerView = new DataView(header);
+                const headerBytes = new Uint8Array(header);
 
-                // Combine header and data
-                const totalSize = header.byteLength + stitchData.byteLength;
+                // Fill header with zeros first
+                headerBytes.fill(0);
+
+                // JEF signature and version
+                headerBytes[0] = 0x20; headerBytes[1] = 0x20; headerBytes[2] = 0x20; headerBytes[3] = 0x20;
+                headerView.setInt32(4, stitchCount, true);
+                
+                // Design extents (in 0.1mm units)
+                headerView.setInt32(8, Math.round(minX), true);
+                headerView.setInt32(12, Math.round(minY), true);
+                headerView.setInt32(16, Math.round(maxX), true);
+                headerView.setInt32(20, Math.round(maxY), true);
+                
+                // Center point
+                headerView.setInt32(24, Math.round((minX + maxX) / 2), true);
+                headerView.setInt32(28, Math.round((minY + maxY) / 2), true);
+                
+                // Color count and thread data offset
+                headerView.setInt32(32, colorCount, true);
+                headerView.setInt32(36, 116, true); // Thread data starts after header
+                
+                // Build thread color data
+                const threadData = new ArrayBuffer(colorCount * 8);
+                const threadView = new DataView(threadData);
+                
+                this.processedColors.forEach((color, index) => {
+                    const rgb = this.hexToRgb(color.hex);
+                    const offset = index * 8;
+                    threadView.setUint8(offset, rgb.r);
+                    threadView.setUint8(offset + 1, rgb.g);
+                    threadView.setUint8(offset + 2, rgb.b);
+                    threadView.setUint8(offset + 3, 0); // Alpha
+                    threadView.setUint32(offset + 4, color.code || index, true); // Thread code
+                });
+
+                // Encode stitch data
+                const stitchData = this.encodeJEFStitches(stitches);
+
+                // Combine all parts
+                const totalSize = header.byteLength + threadData.byteLength + stitchData.byteLength;
                 const jefFile = new ArrayBuffer(totalSize);
                 const jefArray = new Uint8Array(jefFile);
 
-                jefArray.set(new Uint8Array(header), 0);
-                jefArray.set(new Uint8Array(stitchData), header.byteLength);
+                let offset = 0;
+                jefArray.set(new Uint8Array(header), offset);
+                offset += header.byteLength;
+                
+                jefArray.set(new Uint8Array(threadData), offset);
+                offset += threadData.byteLength;
+                
+                jefArray.set(new Uint8Array(stitchData), offset);
 
                 return jefFile;
             }
 
-            encodeStitchData(stitches) {
+            encodeJEFStitches(stitches) {
                 const encoded = [];
                 let lastX = 0, lastY = 0;
+                let currentColor = 0;
 
                 stitches.forEach(stitch => {
                     switch (stitch.type) {
                         case 'color_change':
-                            encoded.push(0x80, 0x01, stitch.color & 0xFF);
+                            // JEF color change command
+                            encoded.push(0x80, 0x01);
+                            currentColor = stitch.color;
                             break;
 
                         case 'stitch':
-                            const deltaX = Math.max(-127, Math.min(127, stitch.x - lastX));
-                            const deltaY = Math.max(-127, Math.min(127, stitch.y - lastY));
+                            let deltaX = stitch.x - lastX;
+                            let deltaY = stitch.y - lastY;
+                            
+                            // Handle large movements by breaking into smaller steps
+                            while (Math.abs(deltaX) > 127 || Math.abs(deltaY) > 127) {
+                                const stepX = Math.max(-127, Math.min(127, deltaX));
+                                const stepY = Math.max(-127, Math.min(127, deltaY));
+                                
+                                encoded.push(stepX & 0xFF, stepY & 0xFF);
+                                
+                                lastX += stepX;
+                                lastY += stepY;
+                                deltaX -= stepX;
+                                deltaY -= stepY;
+                            }
 
-                            encoded.push(deltaX & 0xFF);
-                            encoded.push(deltaY & 0xFF);
+                            // Final step
+                            if (deltaX !== 0 || deltaY !== 0) {
+                                encoded.push(deltaX & 0xFF, deltaY & 0xFF);
+                                lastX = stitch.x;
+                                lastY = stitch.y;
+                            }
+                            break;
 
-                            lastX += deltaX;
-                            lastY += deltaY;
+                        case 'jump':
+                            // Jump without stitching
+                            let jumpX = stitch.x - lastX;
+                            let jumpY = stitch.y - lastY;
+                            
+                            encoded.push(0x80, 0x04); // Jump command
+                            encoded.push(jumpX & 0xFF, jumpY & 0xFF);
+                            
+                            lastX = stitch.x;
+                            lastY = stitch.y;
                             break;
 
                         case 'end':
-                            encoded.push(0x80, 0x10, 0x00);
+                            // End of design
+                            encoded.push(0x80, 0x10);
                             break;
                     }
                 });
