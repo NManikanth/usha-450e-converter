@@ -1,0 +1,20 @@
+{
+  "name": "jef-converter",
+  "version": "1.0.0",
+  "description": "Automatic JEF embroidery file converter",
+  "main": "index.html",
+  "scripts": {
+    "start": "npx serve .",
+    "dev": "npx serve . --live"
+  },
+  "keywords": [
+    "embroidery",
+    "jef",
+    "converter",
+    "image-processing"
+  ],
+  "author": "",
+  "license": "MIT",
+  "devDependencies": {},
+  "dependencies": {}
+}
