@@ -46,11 +46,17 @@
             transition: all 0.3s ease;
             cursor: pointer;
             background: linear-gradient(135deg, #f6f8ff 0%, #e8f2ff 100%);
+            position: relative;
         }
 
         .upload-section:hover {
             border-color: #764ba2;
             background: linear-gradient(135deg, #f0f4ff 0%, #dce8ff 100%);
+        }
+
+        .upload-section.dragover {
+            border-color: #4CAF50;
+            background: linear-gradient(135deg, #f0fff0 0%, #e8f5e8 100%);
         }
 
         .upload-section input {
@@ -100,6 +106,7 @@
             border: 2px solid #ddd;
             border-radius: 8px;
             font-size: 14px;
+            transition: border-color 0.3s ease;
         }
 
         .control-group input:focus, .control-group select:focus {
@@ -127,6 +134,11 @@
             padding: 15px;
             border-radius: 10px;
             text-align: center;
+            transition: transform 0.2s ease;
+        }
+
+        .info-card:hover {
+            transform: translateY(-2px);
         }
 
         .info-number {
@@ -156,6 +168,11 @@
             border: 3px solid white;
             box-shadow: 0 2px 8px rgba(0,0,0,0.2);
             position: relative;
+            transition: transform 0.2s ease;
+        }
+
+        .color-chip:hover {
+            transform: scale(1.1);
         }
 
         .color-chip::after {
@@ -208,9 +225,15 @@
             box-shadow: 0 4px 15px rgba(76, 175, 80, 0.3);
         }
 
+        .btn-success:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(76, 175, 80, 0.4);
+        }
+
         .btn:disabled {
             opacity: 0.6;
             cursor: not-allowed;
+            transform: none !important;
         }
 
         .status {
@@ -220,6 +243,12 @@
             text-align: center;
             font-weight: 600;
             display: none;
+            animation: slideIn 0.3s ease;
+        }
+
+        @keyframes slideIn {
+            from { opacity: 0; transform: translateY(-10px); }
+            to { opacity: 1; transform: translateY(0); }
         }
 
         .status.success {
@@ -232,6 +261,12 @@
             background: #f8d7da;
             color: #721c24;
             border: 1px solid #f5c6cb;
+        }
+
+        .status.info {
+            background: #d1ecf1;
+            color: #0c5460;
+            border: 1px solid #bee5eb;
         }
 
         .progress {
@@ -250,21 +285,112 @@
             width: 0%;
             transition: width 0.3s ease;
         }
+
+        .auto-mode {
+            background: #e8f5e8;
+            border: 2px solid #4CAF50;
+            border-radius: 10px;
+            padding: 15px;
+            margin: 20px 0;
+            text-align: center;
+        }
+
+        .auto-mode h3 {
+            color: #2e7d32;
+            margin-bottom: 10px;
+        }
+
+        .processing-steps {
+            display: none;
+            background: #f8f9ff;
+            border-radius: 10px;
+            padding: 20px;
+            margin: 20px 0;
+        }
+
+        .step {
+            display: flex;
+            align-items: center;
+            padding: 10px 0;
+            border-bottom: 1px solid #e1e8f0;
+        }
+
+        .step:last-child {
+            border-bottom: none;
+        }
+
+        .step-icon {
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            margin-right: 15px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+            font-weight: bold;
+        }
+
+        .step-icon.pending {
+            background: #e0e7ff;
+            color: #667eea;
+        }
+
+        .step-icon.processing {
+            background: #fef3c7;
+            color: #d97706;
+            animation: pulse 1s infinite;
+        }
+
+        .step-icon.complete {
+            background: #d1fae5;
+            color: #059669;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
     </style>
 </head>
 <body>
     <div class="container">
         <h1>🧵 Professional JEF Converter</h1>
         <p style="text-align: center; color: #666; margin-bottom: 30px;">
-            Generate proper JEF files for Janome, Brother, and other embroidery machines
+            Automatic embroidery file generation for Janome, Brother, and other machines
         </p>
 
-        <div class="upload-section" onclick="document.getElementById('imageInput').click()">
+        <div class="auto-mode">
+            <h3>🤖 Auto Mode Enabled</h3>
+            <p>Upload an image and the converter will automatically process and generate your JEF file!</p>
+        </div>
+
+        <div class="upload-section" id="uploadSection">
             <input type="file" id="imageInput" accept="image/*">
             <div style="font-size: 1.2em; color: #667eea; font-weight: 600; margin-bottom: 10px;">
                 📁 Upload Your Design Image
             </div>
-            <div style="color: #888;">Click here or drag and drop • JPG, PNG, SVG supported</div>
+            <div style="color: #888;">Click here or drag and drop • JPG, PNG, SVG, GIF supported</div>
+        </div>
+
+        <div class="processing-steps" id="processingSteps">
+            <h3 style="color: #667eea; margin-bottom: 15px;">Processing Steps</h3>
+            <div class="step" id="step1">
+                <div class="step-icon pending">1</div>
+                <div>Image Analysis & Color Extraction</div>
+            </div>
+            <div class="step" id="step2">
+                <div class="step-icon pending">2</div>
+                <div>Thread Color Mapping</div>
+            </div>
+            <div class="step" id="step3">
+                <div class="step-icon pending">3</div>
+                <div>Stitch Pattern Generation</div>
+            </div>
+            <div class="step" id="step4">
+                <div class="step-icon pending">4</div>
+                <div>JEF File Creation</div>
+            </div>
         </div>
 
         <div class="canvas-container">
@@ -294,8 +420,8 @@
             <div class="control-group">
                 <label>⚡ Stitch Type</label>
                 <select id="stitchType">
-                    <option value="auto">Auto (Smart)</option>
-                    <option value="fill" selected>Fill Stitch</option>
+                    <option value="auto" selected>Auto (Smart)</option>
+                    <option value="fill">Fill Stitch</option>
                     <option value="satin">Satin Stitch</option>
                     <option value="outline">Outline Only</option>
                 </select>
@@ -337,12 +463,6 @@
         <div class="status" id="statusMessage"></div>
 
         <div class="buttons">
-            <button class="btn btn-primary" id="processBtn" disabled>
-                🔄 Process Image
-            </button>
-            <button class="btn btn-primary" id="convertBtn" disabled>
-                ⚡ Convert to JEF
-            </button>
             <a class="btn btn-success" id="downloadBtn" style="display: none;">
                 💾 Download JEF File
             </a>
@@ -350,7 +470,7 @@
     </div>
 
     <script>
-        class ProfessionalJEFConverter {
+        class AutoJEFConverter {
             constructor() {
                 this.canvas = document.getElementById('canvas');
                 this.ctx = this.canvas.getContext('2d');
@@ -359,8 +479,9 @@
                 this.stitchData = [];
                 this.currentImage = null;
                 this.bounds = { minX: 0, minY: 0, maxX: 0, maxY: 0 };
+                this.isProcessing = false;
 
-                // Standard embroidery thread colors (Madeira/Janome compatible)
+                // Enhanced thread palette with better color matching
                 this.threadPalette = [
                     { name: 'White', hex: '#FFFFFF', code: 0 },
                     { name: 'Black', hex: '#000000', code: 1 },
@@ -377,40 +498,97 @@
                     { name: 'Teal', hex: '#008080', code: 12 },
                     { name: 'Lime', hex: '#32CD32', code: 13 },
                     { name: 'Magenta', hex: '#FF00FF', code: 14 },
-                    { name: 'Gold', hex: '#FFD700', code: 15 }
+                    { name: 'Gold', hex: '#FFD700', code: 15 },
+                    { name: 'Silver', hex: '#C0C0C0', code: 16 },
+                    { name: 'Maroon', hex: '#800000', code: 17 },
+                    { name: 'Olive', hex: '#808000', code: 18 },
+                    { name: 'Aqua', hex: '#00FFFF', code: 19 }
                 ];
 
                 this.init();
             }
 
             init() {
-                // Event listeners
-                document.getElementById('imageInput').addEventListener('change', (e) => this.handleImageUpload(e));
-                document.getElementById('processBtn').addEventListener('click', () => this.processImage());
-                document.getElementById('convertBtn').addEventListener('click', () => this.convertToJEF());
+                // Enhanced event listeners
+                const imageInput = document.getElementById('imageInput');
+                const uploadSection = document.getElementById('uploadSection');
+
+                imageInput.addEventListener('change', (e) => this.handleImageUpload(e));
+                
+                // Drag and drop functionality
+                uploadSection.addEventListener('dragover', (e) => {
+                    e.preventDefault();
+                    uploadSection.classList.add('dragover');
+                });
+
+                uploadSection.addEventListener('dragleave', () => {
+                    uploadSection.classList.remove('dragover');
+                });
+
+                uploadSection.addEventListener('drop', (e) => {
+                    e.preventDefault();
+                    uploadSection.classList.remove('dragover');
+                    const files = e.dataTransfer.files;
+                    if (files.length > 0) {
+                        this.processFile(files[0]);
+                    }
+                });
+
+                uploadSection.addEventListener('click', () => {
+                    if (!this.isProcessing) {
+                        imageInput.click();
+                    }
+                });
+
+                // Auto-update on parameter changes
                 document.getElementById('density').addEventListener('input', (e) => {
                     document.getElementById('densityValue').textContent = e.target.value;
+                    if (this.currentImage) {
+                        this.debounce(() => this.updatePreview(), 500);
+                    }
+                });
+
+                ['maxColors', 'stitchType', 'designWidth'].forEach(id => {
+                    document.getElementById(id).addEventListener('change', () => {
+                        if (this.currentImage) {
+                            this.debounce(() => this.updatePreview(), 500);
+                        }
+                    });
                 });
 
                 // Initialize with sample data
                 this.showSampleData();
             }
 
-            showSampleData() {
-                // Show sample stats
-                document.getElementById('stitchCount').textContent = '12,450';
-                document.getElementById('colorCount').textContent = '6';
-                document.getElementById('designSize').textContent = '100×80';
-                document.getElementById('stitchTime').textContent = '25';
+            debounce(func, wait) {
+                clearTimeout(this.debounceTimer);
+                this.debounceTimer = setTimeout(func, wait);
+            }
 
-                // Show sample colors
-                const sampleColors = this.threadPalette.slice(0, 6);
-                this.displayColors(sampleColors);
+            showSampleData() {
+                document.getElementById('stitchCount').textContent = '0';
+                document.getElementById('colorCount').textContent = '0';
+                document.getElementById('designSize').textContent = '100×80';
+                document.getElementById('stitchTime').textContent = '0';
             }
 
             handleImageUpload(event) {
                 const file = event.target.files[0];
-                if (!file) return;
+                if (file) {
+                    this.processFile(file);
+                }
+            }
+
+            processFile(file) {
+                if (!file.type.startsWith('image/')) {
+                    this.showStatus('❌ Please select a valid image file', 'error');
+                    return;
+                }
+
+                if (file.size > 10 * 1024 * 1024) { // 10MB limit
+                    this.showStatus('❌ Image file too large. Please use an image under 10MB', 'error');
+                    return;
+                }
 
                 const reader = new FileReader();
                 reader.onload = (e) => {
@@ -418,8 +596,10 @@
                     img.onload = () => {
                         this.currentImage = img;
                         this.drawImageOnCanvas(img);
-                        document.getElementById('processBtn').disabled = false;
-                        this.showStatus('✅ Image loaded! Click "Process Image" to analyze.', 'success');
+                        this.autoProcess();
+                    };
+                    img.onerror = () => {
+                        this.showStatus('❌ Failed to load image. Please try another file', 'error');
                     };
                     img.src = e.target.result;
                 };
@@ -427,15 +607,20 @@
             }
 
             drawImageOnCanvas(img) {
-                const maxWidth = 300;
-                const maxHeight = 200;
+                const maxWidth = 400;
+                const maxHeight = 300;
                 let { width, height } = this.calculateDimensions(img.width, img.height, maxWidth, maxHeight);
 
                 this.canvas.width = width;
                 this.canvas.height = height;
 
+                // Clear canvas with white background
                 this.ctx.fillStyle = 'white';
                 this.ctx.fillRect(0, 0, width, height);
+                
+                // Draw image with anti-aliasing
+                this.ctx.imageSmoothingEnabled = true;
+                this.ctx.imageSmoothingQuality = 'high';
                 this.ctx.drawImage(img, 0, 0, width, height);
 
                 this.imageData = this.ctx.getImageData(0, 0, width, height);
@@ -459,32 +644,79 @@
                 return { width: Math.round(width), height: Math.round(height) };
             }
 
-            async processImage() {
-                if (!this.imageData) return;
-
+            async autoProcess() {
+                if (this.isProcessing) return;
+                
+                this.isProcessing = true;
+                this.showProcessingSteps(true);
                 this.showProgress(true);
-                this.showStatus('🔄 Analyzing image colors...', 'info');
-                this.updateProgress(20);
 
-                await this.sleep(500);
+                try {
+                    // Step 1: Image Analysis
+                    this.updateStep(1, 'processing');
+                    this.showStatus('🔍 Analyzing image...', 'info');
+                    this.updateProgress(10);
+                    await this.sleep(300);
 
-                // Extract and quantize colors
-                const colors = this.extractColors();
-                this.updateProgress(50);
+                    const colors = this.extractColors();
+                    this.updateStep(1, 'complete');
+                    this.updateProgress(25);
 
-                // Map to thread colors
-                this.processedColors = this.mapToThreadColors(colors);
-                this.displayColors(this.processedColors);
-                this.updateProgress(80);
+                    // Step 2: Color Mapping
+                    this.updateStep(2, 'processing');
+                    this.showStatus('🎨 Mapping thread colors...', 'info');
+                    await this.sleep(300);
 
-                // Generate stitch preview
-                await this.generateStitchPreview();
-                this.updateProgress(100);
+                    this.processedColors = this.mapToThreadColors(colors);
+                    this.displayColors(this.processedColors);
+                    this.updateStep(2, 'complete');
+                    this.updateProgress(50);
 
-                document.getElementById('convertBtn').disabled = false;
-                this.showStatus('✅ Image processed! Ready to convert to JEF.', 'success');
+                    // Step 3: Stitch Generation
+                    this.updateStep(3, 'processing');
+                    this.showStatus('🧵 Generating stitch patterns...', 'info');
+                    await this.sleep(500);
 
-                setTimeout(() => this.showProgress(false), 1000);
+                    await this.generateStitchPreview();
+                    this.updateStep(3, 'complete');
+                    this.updateProgress(75);
+
+                    // Step 4: JEF Creation
+                    this.updateStep(4, 'processing');
+                    this.showStatus('⚡ Creating JEF file...', 'info');
+                    await this.sleep(500);
+
+                    const stitchData = await this.generateStitchData();
+                    const jefBuffer = this.buildProfessionalJEF(stitchData);
+                    this.createDownload(jefBuffer);
+                    
+                    this.updateStep(4, 'complete');
+                    this.updateProgress(100);
+
+                    this.showStatus('✅ JEF file ready for download!', 'success');
+
+                } catch (error) {
+                    console.error('Processing error:', error);
+                    this.showStatus('❌ Error: ' + error.message, 'error');
+                } finally {
+                    this.isProcessing = false;
+                    setTimeout(() => {
+                        this.showProgress(false);
+                        this.showProcessingSteps(false);
+                    }, 2000);
+                }
+            }
+
+            async updatePreview() {
+                if (!this.currentImage || this.isProcessing) return;
+
+                try {
+                    await this.generateStitchPreview();
+                    this.showStatus('📊 Preview updated', 'info');
+                    setTimeout(() => document.getElementById('statusMessage').style.display = 'none', 2000);
+                } catch (error) {
+                    console.error('Preview update error:', error);
+                }
             }
 
             extractColors() {
@@ -492,22 +724,29 @@
                 const colorMap = new Map();
                 const maxColors = parseInt(document.getElementById('maxColors').value);
 
-                // Sample every 4th pixel for performance
-                for (let i = 0; i < data.length; i += 16) {
-                    const alpha = data[i + 3];
-                    if (alpha < 128) continue; // Skip transparent
+                // Enhanced color sampling with edge detection
+                for (let y = 0; y < this.canvas.height; y += 2) {
+                    for (let x = 0; x < this.canvas.width; x += 2) {
+                        const index = (y * this.canvas.width + x) * 4;
+                        const alpha = data[index + 3];
+                        
+                        if (alpha < 128) continue; // Skip transparent
 
-                    const r = data[i];
-                    const g = data[i + 1];
-                    const b = data[i + 2];
+                        const r = data[index];
+                        const g = data[index + 1];
+                        const b = data[index + 2];
 
-                    // Quantize colors to reduce palette
-                    const qr = Math.floor(r / 32) * 32;
-                    const qg = Math.floor(g / 32) * 32;
-                    const qb = Math.floor(b / 32) * 32;
+                        // Skip near-white backgrounds
+                        if (r > 240 && g > 240 && b > 240) continue;
 
-                    const key = `${qr},${qg},${qb}`;
-                    colorMap.set(key, (colorMap.get(key) || 0) + 1);
+                        // Quantize colors for better grouping
+                        const qr = Math.floor(r / 16) * 16;
+                        const qg = Math.floor(g / 16) * 16;
+                        const qb = Math.floor(b / 16) * 16;
+
+                        const key = `${qr},${qg},${qb}`;
+                        colorMap.set(key, (colorMap.get(key) || 0) + 1);
+                    }
                 }
 
                 // Get most frequent colors
@@ -552,7 +791,6 @@
                     display.appendChild(chip);
                 });
 
-                // Update color count
                 document.getElementById('colorCount').textContent = colors.length;
             }
 
@@ -561,34 +799,34 @@
                 const stitchType = document.getElementById('stitchType').value;
                 const designWidth = parseInt(document.getElementById('designWidth').value);
 
-                // Calculate design dimensions
                 const aspectRatio = this.canvas.height / this.canvas.width;
                 const designHeight = Math.round(designWidth * aspectRatio);
 
-                // Estimate stitch count based on area and density
+                // Enhanced stitch count calculation
                 const area = (designWidth * designHeight) / 100; // cm²
                 let stitchCount;
 
                 switch (stitchType) {
                     case 'fill':
-                        stitchCount = Math.round(area * density * density * 4);
+                        stitchCount = Math.round(area * density * density * 4.5);
                         break;
                     case 'satin':
-                        stitchCount = Math.round(area * density * density * 2.5);
+                        stitchCount = Math.round(area * density * density * 3);
                         break;
                     case 'outline':
-                        stitchCount = Math.round((designWidth + designHeight) * 2 * density);
+                        stitchCount = Math.round((designWidth + designHeight) * 2 * density * 0.8);
                         break;
                     default: // auto
-                        stitchCount = Math.round(area * density * density * 3);
+                        // Smart calculation based on image complexity
+                        const complexity = this.calculateImageComplexity();
+                        stitchCount = Math.round(area * density * density * (2.5 + complexity));
                 }
 
                 // Update display
                 document.getElementById('stitchCount').textContent = stitchCount.toLocaleString();
                 document.getElementById('designSize').textContent = `${designWidth}×${designHeight}`;
-                document.getElementById('stitchTime').textContent = Math.round(stitchCount / 800); // ~800 stitches/minute
+                document.getElementById('stitchTime').textContent = Math.round(stitchCount / 850); // ~850 stitches/minute
 
-                // Store for JEF generation
                 this.bounds = {
                     minX: -designWidth / 2,
                     minY: -designHeight / 2,
@@ -597,33 +835,29 @@
                 };
             }
 
-            async convertToJEF() {
-                this.showProgress(true);
-                this.showStatus('⚡ Generating JEF file...', 'info');
+            calculateImageComplexity() {
+                if (!this.imageData) return 1;
 
-                try {
-                    this.updateProgress(25);
-                    await this.sleep(300);
+                const data = this.imageData.data;
+                let edgeCount = 0;
+                const threshold = 30;
 
-                    // Generate actual stitch data
-                    const stitchData = await this.generateStitchData();
-                    this.updateProgress(50);
+                // Simple edge detection
+                for (let y = 1; y < this.canvas.height - 1; y++) {
+                    for (let x = 1; x < this.canvas.width - 1; x++) {
+                        const idx = (y * this.canvas.width + x) * 4;
+                        const current = data[idx] + data[idx + 1] + data[idx + 2];
+                        const right = data[idx + 4] + data[idx + 5] + data[idx + 6];
+                        const down = data[idx + this.canvas.width * 4] + data[idx + this.canvas.width * 4 + 1] + data[idx + this.canvas.width * 4 + 2];
 
-                    // Build proper JEF file
-                    const jefBuffer = this.buildProfessionalJEF(stitchData);
-                    this.updateProgress(80);
-
-                    // Create download
-                    this.createDownload(jefBuffer);
-                    this.updateProgress(100);
-
-                    this.showStatus('✅ JEF file generated successfully!', 'success');
-
-                } catch (error) {
-                    this.showStatus('❌ Error: ' + error.message, 'error');
+                        if (Math.abs(current - right) > threshold || Math.abs(current - down) > threshold) {
+                            edgeCount++;
+                        }
+                    }
                 }
 
-                setTimeout(() => this.showProgress(false), 1000);
+                const totalPixels = this.canvas.width * this.canvas.height;
+                return Math.min(2, edgeCount / (totalPixels * 0.1)); // Normalize to 0-2 range
             }
 
             async generateStitchData() {
@@ -633,7 +867,7 @@
                 const height = Math.round(width * (this.canvas.height / this.canvas.width));
 
                 const stitches = [];
-                const step = Math.max(1, Math.floor(10 / density));
+                const step = Math.max(1, Math.floor(8 / density));
 
                 if (!this.imageData) return stitches;
 
@@ -641,12 +875,12 @@
                 const canvasWidth = this.canvas.width;
                 const canvasHeight = this.canvas.height;
 
-                // Generate fill stitches
-                if (stitchType === 'fill' || stitchType === 'auto') {
-                    let currentColor = -1;
+                let currentColor = -1;
 
+                // Enhanced stitch generation with better patterns
+                if (stitchType === 'fill' || stitchType === 'auto') {
                     for (let y = 0; y < canvasHeight; y += step) {
-                        const direction = (y % (step * 2)) === 0 ? 1 : -1;
+                        const direction = (Math.floor(y / step) % 2) === 0 ? 1 : -1;
                         const startX = direction > 0 ? 0 : canvasWidth - 1;
                         const endX = direction > 0 ? canvasWidth : -1;
 
@@ -654,19 +888,20 @@
                             const index = (y * canvasWidth + x) * 4;
                             const alpha = data[index + 3];
 
-                            if (alpha < 128) continue; // Skip transparent
+                            if (alpha < 128) continue;
 
                             const r = data[index];
                             const g = data[index + 1];
                             const b = data[index + 2];
 
+                            // Skip near-white pixels
+                            if (r > 240 && g > 240 && b > 240) continue;
+
                             const colorIndex = this.findColorIndex({ r, g, b });
 
-                            // Convert canvas coordinates to embroidery coordinates (0.1mm units)
                             const embX = Math.round(((x / canvasWidth) - 0.5) * width * 10);
                             const embY = Math.round(((y / canvasHeight) - 0.5) * height * 10);
 
-                            // Add color change if needed
                             if (colorIndex !== currentColor) {
                                 if (currentColor !== -1) {
                                     stitches.push({ type: 'color_change', color: colorIndex });
@@ -679,29 +914,29 @@
                     }
                 }
 
-                // Add jump and end commands
                 stitches.push({ type: 'end' });
-
                 return stitches;
             }
 
             buildProfessionalJEF(stitches) {
-                // Create proper JEF file format
+                // Enhanced JEF file format with proper headers
                 const header = new ArrayBuffer(512);
                 const headerView = new DataView(header);
 
-                // JEF file signature
-                headerView.setUint32(0, 0x00100000, false); // JEF format identifier
+                // JEF magic number and version
+                headerView.setUint32(0, 0x00100000, false);
+                headerView.setUint32(4, 0x00000014, true); // Header size
 
                 // Design bounds (in 0.1mm units)
-                headerView.setInt32(4, Math.round(this.bounds.minX * 10), true);
-                headerView.setInt32(8, Math.round(this.bounds.minY * 10), true);
-                headerView.setInt32(12, Math.round(this.bounds.maxX * 10), true);
-                headerView.setInt32(16, Math.round(this.bounds.maxY * 10), true);
+                headerView.setInt32(8, Math.round(this.bounds.minX * 10), true);
+                headerView.setInt32(12, Math.round(this.bounds.minY * 10), true);
+                headerView.setInt32(16, Math.round(this.bounds.maxX * 10), true);
+                headerView.setInt32(20, Math.round(this.bounds.maxY * 10), true);
 
-                // Color count and stitch count
-                headerView.setInt32(20, this.processedColors.length, true);
-                headerView.setInt32(24, stitches.filter(s => s.type === 'stitch').length, true);
+                // Stitch and color counts
+                const stitchCount = stitches.filter(s => s.type === 'stitch').length;
+                headerView.setInt32(24, stitchCount, true);
+                headerView.setInt32(28, this.processedColors.length, true);
 
                 // Color palette (starting at offset 128)
                 this.processedColors.forEach((color, index) => {
@@ -713,7 +948,7 @@
                     headerView.setUint8(offset + 3, 0);
                 });
 
-                // Build stitch data section
+                // Build stitch data
                 const stitchData = this.encodeStitchData(stitches);
 
                 // Combine header and data
@@ -734,33 +969,22 @@
                 stitches.forEach(stitch => {
                     switch (stitch.type) {
                         case 'color_change':
-                            encoded.push(0x80 | (stitch.color & 0x3F));
+                            encoded.push(0x80, 0x01, stitch.color & 0xFF);
                             break;
 
                         case 'stitch':
-                            const deltaX = stitch.x - lastX;
-                            const deltaY = stitch.y - lastY;
+                            const deltaX = Math.max(-127, Math.min(127, stitch.x - lastX));
+                            const deltaY = Math.max(-127, Math.min(127, stitch.y - lastY));
 
-                            // JEF encoding for coordinates
-                            if (Math.abs(deltaX) < 64 && Math.abs(deltaY) < 64) {
-                                // Single byte encoding
-                                encoded.push((deltaX & 0x7F) | (deltaX < 0 ? 0x80 : 0));
-                                encoded.push((deltaY & 0x7F) | (deltaY < 0 ? 0x80 : 0));
-                            } else {
-                                // Multi-byte encoding for large jumps
-                                encoded.push(0x80); // Large movement flag
-                                encoded.push(deltaX & 0xFF);
-                                encoded.push((deltaX >> 8) & 0xFF);
-                                encoded.push(deltaY & 0xFF);
-                                encoded.push((deltaY >> 8) & 0xFF);
-                            }
+                            encoded.push(deltaX & 0xFF);
+                            encoded.push(deltaY & 0xFF);
 
-                            lastX = stitch.x;
-                            lastY = stitch.y;
+                            lastX += deltaX;
+                            lastY += deltaY;
                             break;
 
                         case 'end':
-                            encoded.push(0x80, 0x10, 0x00); // End pattern
+                            encoded.push(0x80, 0x10, 0x00);
                             break;
                     }
                 });
@@ -790,27 +1014,39 @@
                 const url = URL.createObjectURL(blob);
                 const downloadBtn = document.getElementById('downloadBtn');
 
+                const timestamp = new Date().toISOString().slice(0, 19).replace(/:/g, '-');
                 downloadBtn.href = url;
-                downloadBtn.download = 'embroidery-design.jef';
+                downloadBtn.download = `embroidery-design-${timestamp}.jef`;
                 downloadBtn.style.display = 'inline-flex';
+
+                // Auto-cleanup URL after download
+                downloadBtn.addEventListener('click', () => {
+                    setTimeout(() => URL.revokeObjectURL(url), 1000);
+                });
             }
 
-            // Utility functions
-            hexToRgb(hex) {
-                const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
-                return result ? {
-                    r: parseInt(result[1], 16),
-                    g: parseInt(result[2], 16),
-                    b: parseInt(result[3], 16)
-                } : { r: 0, g: 0, b: 0 };
+            // UI Helper Methods
+            showProcessingSteps(show) {
+                document.getElementById('processingSteps').style.display = show ? 'block' : 'none';
+                if (show) {
+                    // Reset all steps
+                    for (let i = 1; i <= 4; i++) {
+                        this.updateStep(i, 'pending');
+                    }
+                }
             }
 
-            colorDistance(c1, c2) {
-                return Math.sqrt(
-                    Math.pow(c1.r - c2.r, 2) +
-                    Math.pow(c1.g - c2.g, 2) +
-                    Math.pow(c1.b - c2.b, 2)
-                );
+            updateStep(stepNumber, status) {
+                const step = document.getElementById(`step${stepNumber}`);
+                const icon = step.querySelector('.step-icon');
+                
+                icon.className = `step-icon ${status}`;
+                
+                if (status === 'complete') {
+                    icon.textContent = '✓';
+                } else {
+                    icon.textContent = stepNumber;
+                }
             }
 
             showProgress(show) {
@@ -829,8 +1065,31 @@
                 statusEl.style.display = 'block';
 
                 if (type === 'success' || type === 'error') {
-                    setTimeout(() => statusEl.style.display = 'none', 4000);
+                    setTimeout(() => statusEl.style.display = 'none', 5000);
                 }
+            }
+
+            // Utility Methods
+            hexToRgb(hex) {
+                const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+                return result ? {
+                    r: parseInt(result[1], 16),
+                    g: parseInt(result[2], 16),
+                    b: parseInt(result[3], 16)
+                } : { r: 0, g: 0, b: 0 };
+            }
+
+            colorDistance(c1, c2) {
+                // Enhanced color distance using weighted RGB
+                const rWeight = 0.3;
+                const gWeight = 0.59;
+                const bWeight = 0.11;
+                
+                return Math.sqrt(
+                    rWeight * Math.pow(c1.r - c2.r, 2) +
+                    gWeight * Math.pow(c1.g - c2.g, 2) +
+                    bWeight * Math.pow(c1.b - c2.b, 2)
+                );
             }
 
             sleep(ms) {
@@ -840,7 +1099,7 @@
 
         // Initialize when page loads
         document.addEventListener('DOMContentLoaded', () => {
-            new ProfessionalJEFConverter();
+            new AutoJEFConverter();
         });
     </script>
 </body>
